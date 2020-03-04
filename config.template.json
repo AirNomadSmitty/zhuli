@@ -1,0 +1,22 @@
+{
+    "google": {
+        "gmail": {
+            "oauth": {
+                "accessToken": "accessTokenHere",
+                "refreshToken": "refreshTokenHere"
+            },
+            "topic": "topicHere"
+        },
+        "googleCloud": {
+            "credentials": "paste ESCAPED downloaded json credentials here"
+        }  
+    },
+    "webServer": {
+        "port": 8080
+    },
+    "twilio": {
+        "accountSID": "accountSID",
+        "authToken": "authToken",
+        "phoneNumber": "phoneNumber"
+    }
+}
