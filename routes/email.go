@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -15,11 +16,25 @@ import (
 
 type GmailSubRequestPayload struct {
 	Message struct {
-		Data      string `json:"data"`
-		MessageID int    `json:"message_id"`
-	} `json:"message"`
-	Subscription string `json:"subscription"`
+		Data      string
+		MessageID string `json:"message_id"`
+	}
+	Subscription string
 }
+
+type GmailMessageData struct {
+	EmailAddress string
+	HistoryID    uint64
+}
+
+func (payload *GmailSubRequestPayload) ParseData() GmailMessageData {
+	decoded, _ := base64.URLEncoding.DecodeString(payload.Message.Data)
+	decoder := json.NewDecoder(bytes.NewReader(decoded))
+	var data GmailMessageData
+	decoder.Decode(&data)
+	return data
+}
+
 type EmailController struct {
 	Srv               *gmail.Service
 	LastHistoryID     uint64
@@ -29,12 +44,7 @@ type EmailController struct {
 	DestinationNumber string
 }
 
-func NewEmailController(srv *gmail.Service,
-	lastHistoryID uint64,
-	accountSID string,
-	authToken string,
-	phoneNumber string,
-	destinationNumber string) *EmailController {
+func NewEmailController(srv *gmail.Service, lastHistoryID uint64, accountSID string, authToken string, phoneNumber string, destinationNumber string) *EmailController {
 	return &EmailController{srv, lastHistoryID, accountSID, authToken, phoneNumber, destinationNumber}
 }
 
@@ -45,16 +55,19 @@ func (cont *EmailController) Post(res http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		panic(err)
 	}
-	cont.processEmail(response)
+	messageData := response.ParseData()
+	utils.See(cont.LastHistoryID)
+	cont.processEmail()
+	cont.LastHistoryID = messageData.HistoryID
 	res.Write(nil)
 }
 
 func (cont *EmailController) Get(res http.ResponseWriter, req *http.Request) {
-	cont.processEmail(GmailSubRequestPayload{})
+	cont.processEmail()
 	res.Write([]byte("OK"))
 }
 
-func (cont *EmailController) processEmail(pushedData GmailSubRequestPayload) {
+func (cont *EmailController) processEmail() {
 	historyList, err := cont.Srv.Users.History.List("me").StartHistoryId(cont.LastHistoryID).HistoryTypes("messageAdded").Do()
 	if err != nil {
 		utils.See(err)
@@ -105,12 +118,11 @@ func parseMessagePart(message *gmail.MessagePart) ([]byte, error) {
 func (cont *EmailController) handleBookingMessage(message *gmail.Message) {
 	messageData, _ := parseMessagePart(message.Payload)
 
-	regex, _ := regexp.Compile(`spot ([\d]{1,2}) with [\w ]+ on (Mon Mar 2nd 5:45 PM)`)
+	regex, _ := regexp.Compile(`spot ([\d]{1,2}) with [\w ]+ on ([\w :]+(?:PM|AM))`)
 	matches := regex.FindStringSubmatch(string(messageData))
 
 	postUrl := "https://api.twilio.com/2010-04-01/Accounts/" + cont.AccountSID + "/Messages.json"
 	text := "David has signed up for spot " + matches[1] + " in the class on " + matches[2]
-	utils.See(matches)
 
 	data := url.Values{}
 	data.Set("To", cont.DestinationNumber)

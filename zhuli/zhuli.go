@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/airnomadsmitty/zhuli/routes"
+	"github.com/airnomadsmitty/zhuli/utils"
 	"github.com/gorilla/mux"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -69,13 +70,13 @@ func (zhuli *Zhuli) DoTheThing() {
 	if err != nil {
 		panic(err)
 	}
-	_, err = srv.Users.Watch("me", &gmail.WatchRequest{TopicName: zhuli.Config.Google.Gmail.Topic}).Do()
+	watchResponse, err := srv.Users.Watch("me", &gmail.WatchRequest{TopicName: zhuli.Config.Google.Gmail.Topic}).Do()
 	if err != nil {
 		panic(err)
 	}
-
+	utils.See(watchResponse.HistoryId)
 	r := mux.NewRouter()
-	emailController := routes.NewEmailController(srv, 4706, zhuli.Config.Twilio.AccountSID, zhuli.Config.Twilio.AuthToken, zhuli.Config.Twilio.PhoneNumber, zhuli.Config.Twilio.DestinationNumber)
+	emailController := routes.NewEmailController(srv, watchResponse.HistoryId, zhuli.Config.Twilio.AccountSID, zhuli.Config.Twilio.AuthToken, zhuli.Config.Twilio.PhoneNumber, zhuli.Config.Twilio.DestinationNumber)
 	r.HandleFunc("/email", emailController.Post).Methods("POST")
 	r.HandleFunc("/", emailController.Get).Methods("GET")
 	http.Handle("/", r)
