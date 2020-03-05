@@ -21,15 +21,21 @@ type GmailSubRequestPayload struct {
 	Subscription string `json:"subscription"`
 }
 type EmailController struct {
-	Srv           *gmail.Service
-	LastHistoryID uint64
-	AccountSID    string
-	AuthToken     string
-	PhoneNumber   string
+	Srv               *gmail.Service
+	LastHistoryID     uint64
+	AccountSID        string
+	AuthToken         string
+	PhoneNumber       string
+	DestinationNumber string
 }
 
-func NewEmailController(srv *gmail.Service, lastHistoryID uint64, accountSID string, authToken string, phoneNumber string) *EmailController {
-	return &EmailController{srv, lastHistoryID, accountSID, authToken, phoneNumber}
+func NewEmailController(srv *gmail.Service,
+	lastHistoryID uint64,
+	accountSID string,
+	authToken string,
+	phoneNumber string,
+	destinationNumber string) *EmailController {
+	return &EmailController{srv, lastHistoryID, accountSID, authToken, phoneNumber, destinationNumber}
 }
 
 func (cont *EmailController) Post(res http.ResponseWriter, req *http.Request) {
@@ -39,7 +45,6 @@ func (cont *EmailController) Post(res http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		panic(err)
 	}
-
 	cont.processEmail(response)
 	res.Write(nil)
 }
@@ -108,7 +113,7 @@ func (cont *EmailController) handleBookingMessage(message *gmail.Message) {
 	utils.See(matches)
 
 	data := url.Values{}
-	data.Set("To", "")
+	data.Set("To", cont.DestinationNumber)
 	data.Set("From", cont.PhoneNumber)
 	data.Set("Body", text)
 

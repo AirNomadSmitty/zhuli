@@ -17,6 +17,7 @@
     "twilio": {
         "accountSID": "accountSID",
         "authToken": "authToken",
-        "phoneNumber": "phoneNumber"
+        "phoneNumber": "phoneNumber",
+        "destinationNumber": "phoneNumber"
     }
 }

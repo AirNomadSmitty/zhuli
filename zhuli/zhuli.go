@@ -32,9 +32,10 @@ type ZhuliConfig struct {
 		Port int
 	}
 	Twilio struct {
-		AccountSID  string
-		AuthToken   string
-		PhoneNumber string
+		AccountSID        string
+		AuthToken         string
+		PhoneNumber       string
+		DestinationNumber string
 	}
 }
 
@@ -74,7 +75,7 @@ func (zhuli *Zhuli) DoTheThing() {
 	}
 
 	r := mux.NewRouter()
-	emailController := routes.NewEmailController(srv, 4706, zhuli.Config.Twilio.AccountSID, zhuli.Config.Twilio.AuthToken, zhuli.Config.Twilio.PhoneNumber)
+	emailController := routes.NewEmailController(srv, 4706, zhuli.Config.Twilio.AccountSID, zhuli.Config.Twilio.AuthToken, zhuli.Config.Twilio.PhoneNumber, zhuli.Config.Twilio.DestinationNumber)
 	r.HandleFunc("/email", emailController.Post).Methods("POST")
 	r.HandleFunc("/", emailController.Get).Methods("GET")
 	http.Handle("/", r)
