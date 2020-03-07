@@ -5,7 +5,8 @@
                 "accessToken": "accessTokenHere",
                 "refreshToken": "refreshTokenHere"
             },
-            "topic": "topicHere"
+            "topic": "topicHere",
+            "pushKey": "pushKeyHere"
         },
         "googleCloud": {
             "credentials": "paste ESCAPED downloaded json credentials here"
@@ -18,6 +19,9 @@
         "accountSID": "accountSID",
         "authToken": "authToken",
         "phoneNumber": "phoneNumber",
-        "destinationNumber": "phoneNumber"
+        "destinationNumbers": [
+            "phoneNumber",
+            "phoneNumber"
+        ]
     }
 }

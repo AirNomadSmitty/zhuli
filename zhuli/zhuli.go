@@ -23,7 +23,8 @@ type ZhuliConfig struct {
 				AccessToken  string
 				RefreshToken string
 			}
-			Topic string
+			Topic   string
+			PushKey string
 		}
 		GoogleCloud struct {
 			Credentials string
@@ -33,10 +34,10 @@ type ZhuliConfig struct {
 		Port int
 	}
 	Twilio struct {
-		AccountSID        string
-		AuthToken         string
-		PhoneNumber       string
-		DestinationNumber string
+		AccountSID         string
+		AuthToken          string
+		PhoneNumber        string
+		DestinationNumbers []string
 	}
 }
 
@@ -70,17 +71,28 @@ func (zhuli *Zhuli) DoTheThing() {
 	if err != nil {
 		panic(err)
 	}
-	watchResponse, err := srv.Users.Watch("me", &gmail.WatchRequest{TopicName: zhuli.Config.Google.Gmail.Topic}).Do()
+	topic := zhuli.Config.Google.Gmail.Topic
+	watchResponse, err := srv.Users.Watch("me", &gmail.WatchRequest{TopicName: topic}).Do()
 	if err != nil {
 		panic(err)
 	}
 	utils.See(watchResponse.HistoryId)
 	r := mux.NewRouter()
-	emailController := routes.NewEmailController(srv, watchResponse.HistoryId, zhuli.Config.Twilio.AccountSID, zhuli.Config.Twilio.AuthToken, zhuli.Config.Twilio.PhoneNumber, zhuli.Config.Twilio.DestinationNumber)
+	emailController := routes.NewEmailController(srv, watchResponse.HistoryId, zhuli.Config.Twilio.AccountSID, zhuli.Config.Twilio.AuthToken, zhuli.Config.Twilio.PhoneNumber, zhuli.Config.Twilio.DestinationNumbers, zhuli.Config.Google.Gmail.PushKey)
+	go doGmailDailyMaintenance(srv, topic, emailController)
 	r.HandleFunc("/email", emailController.Post).Methods("POST")
 	r.HandleFunc("/", emailController.Get).Methods("GET")
 	http.Handle("/", r)
 	fmt.Println("Starting server...")
 	http.ListenAndServe(":"+strconv.Itoa(zhuli.Config.WebServer.Port), nil)
+}
 
+func doGmailDailyMaintenance(srv *gmail.Service, topic string, emailController *routes.EmailController) {
+	time.Sleep(24 * time.Hour)
+	watchResponse, err := srv.Users.Watch("me", &gmail.WatchRequest{TopicName: topic}).Do()
+	if err != nil {
+		panic(err)
+	}
+	emailController.LastHistoryID = watchResponse.HistoryId
+	emailController.ProcessedEmails = map[string]bool{}
 }

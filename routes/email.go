@@ -36,34 +36,38 @@ func (payload *GmailSubRequestPayload) ParseData() GmailMessageData {
 }
 
 type EmailController struct {
-	Srv               *gmail.Service
-	LastHistoryID     uint64
-	AccountSID        string
-	AuthToken         string
-	PhoneNumber       string
-	DestinationNumber string
+	Srv                *gmail.Service
+	LastHistoryID      uint64
+	AccountSID         string
+	AuthToken          string
+	PhoneNumber        string
+	DestinationNumbers []string
+	PushKey            string
+	ProcessedEmails    map[string]bool
 }
 
-func NewEmailController(srv *gmail.Service, lastHistoryID uint64, accountSID string, authToken string, phoneNumber string, destinationNumber string) *EmailController {
-	return &EmailController{srv, lastHistoryID, accountSID, authToken, phoneNumber, destinationNumber}
+func NewEmailController(srv *gmail.Service, lastHistoryID uint64, accountSID string, authToken string, phoneNumber string, destinationNumbers []string, pushKey string) *EmailController {
+	return &EmailController{srv, lastHistoryID, accountSID, authToken, phoneNumber, destinationNumbers, pushKey, map[string]bool{}}
 }
 
 func (cont *EmailController) Post(res http.ResponseWriter, req *http.Request) {
+	if req.URL.Query().Get("key") != cont.PushKey {
+		http.Error(res, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 	decoder := json.NewDecoder(req.Body)
 	var response GmailSubRequestPayload
 	err := decoder.Decode(&response)
 	if err != nil {
-		panic(err)
+		utils.See(err)
 	}
 	messageData := response.ParseData()
-	utils.See(cont.LastHistoryID)
 	cont.processEmail()
 	cont.LastHistoryID = messageData.HistoryID
 	res.Write(nil)
 }
 
 func (cont *EmailController) Get(res http.ResponseWriter, req *http.Request) {
-	cont.processEmail()
 	res.Write([]byte("OK"))
 }
 
@@ -74,7 +78,11 @@ func (cont *EmailController) processEmail() {
 	}
 	for _, history := range historyList.History {
 		for _, historyMessage := range history.Messages {
+			if cont.ProcessedEmails[historyMessage.Id] {
+				continue
+			}
 			message, err := cont.Srv.Users.Messages.Get("me", historyMessage.Id).Do()
+			cont.ProcessedEmails[message.Id] = true
 			if err != nil {
 				utils.See(err)
 			}
@@ -122,22 +130,24 @@ func (cont *EmailController) handleBookingMessage(message *gmail.Message) {
 	matches := regex.FindStringSubmatch(string(messageData))
 
 	postUrl := "https://api.twilio.com/2010-04-01/Accounts/" + cont.AccountSID + "/Messages.json"
-	text := "David has signed up for spot " + matches[1] + " in the class on " + matches[2]
-
-	data := url.Values{}
-	data.Set("To", cont.DestinationNumber)
-	data.Set("From", cont.PhoneNumber)
-	data.Set("Body", text)
-
+	text := "This is Zhu Li, David's personal assistant. He signed up for spot " + matches[1] + " in the spin class on " + matches[2] + ". Please do not reply to this message."
 	client := &http.Client{}
-	req, _ := http.NewRequest("POST", postUrl, strings.NewReader(data.Encode()))
-	req.SetBasicAuth(cont.AccountSID, cont.AuthToken)
-	req.Header.Add("Accept", "application/json")
-	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
-	resp, _ := client.Do(req)
-	if resp.StatusCode < 200 || resp.StatusCode > 300 {
-		fmt.Println(resp.Status)
+	for _, number := range cont.DestinationNumbers {
+		data := url.Values{}
+		data.Set("From", cont.PhoneNumber)
+		data.Set("Body", text)
+		data.Set("To", number)
+
+		req, _ := http.NewRequest("POST", postUrl, strings.NewReader(data.Encode()))
+		req.SetBasicAuth(cont.AccountSID, cont.AuthToken)
+		req.Header.Add("Accept", "application/json")
+		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
+		resp, _ := client.Do(req)
+		if resp.StatusCode < 200 || resp.StatusCode > 300 {
+			fmt.Println(resp.Status)
+		}
+
 	}
-
 }
