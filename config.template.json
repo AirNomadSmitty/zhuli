@@ -1,27 +1,18 @@
 {
-    "google": {
-        "gmail": {
-            "oauth": {
-                "accessToken": "accessTokenHere",
-                "refreshToken": "refreshTokenHere"
-            },
-            "topic": "topicHere",
-            "pushKey": "pushKeyHere"
+    "gmail": {
+        "oauth": {
+            "accessToken": "accessToken",
+            "refreshToken": "refreshToken"
         },
-        "googleCloud": {
-            "credentials": "paste ESCAPED downloaded json credentials here"
-        }  
+        "topic": "topic",
+        "pushKey": "pushKey",
+        "googleCloudCredentials": "ESCAPED google cloud credentials"
     },
     "webServer": {
         "port": 8080
     },
     "twilio": {
         "accountSID": "accountSID",
-        "authToken": "authToken",
-        "phoneNumber": "phoneNumber",
-        "destinationNumbers": [
-            "phoneNumber",
-            "phoneNumber"
-        ]
+        "authToken": "authToken"
     }
 }

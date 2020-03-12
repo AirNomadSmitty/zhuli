@@ -2,3 +2,7 @@
 config\.json
 
 main
+
+config\.misc\.json
+
+config\.zhuli\.json
